@@ -2,6 +2,7 @@
 #include <sys/mman.h>
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <sys/time.h>
 #include <signal.h>
 #include <fcntl.h>
 #include <stdarg.h>
@@ -141,45 +142,138 @@ int dump (void)
 	printf ("DAT %c : 0x%08x\n", 'G', DAT('G'));
 }
 
-int scan_row (void)
+/* return in microsecond */
+int get_time (void)
 {
-	static int row;
+	struct timeval tv;
 
+	gettimeofday (&tv, NULL);
+
+	return tv.tv_sec * 1000000 + tv.tv_usec;
+}
+
+#define CBITS	4
+int set_line (int row, int bit, int frame_count)
+{
+	int ani = frame_count / 2;
 	int i;
 	unsigned int out;
 
-	DAT ('A') = orgA | (1 << BIT_OE);
-
-	DAT ('G') = orgG | (row << BIT_ABCD);
-	//debug ("row %2d, G:0x%08x\n", row, orgG | (row << BIT_ABCD));
-
-	for (i=0; i<32; i++)
+	for (i=0; i<64; i++)
 	{
 		unsigned int rgb;
+		unsigned int c, b;
 
 		rgb = 0;
 
-		//rgb |= (0x01 | 0x08);
-		if (((i + row + 0) % 8) == 0) rgb |= (0x01 | 0x08);
-		if (((i + row + 1) % 8) == 0) rgb |= (0x02 | 0x10);
-		if (((i + row + 2) % 8) == 0) rgb |= (0x04 | 0x20);
+		c = ani + i - row;
+		b = ani + i + row;
+		if (b & (0x40 >> (CBITS-bit)))
+		{
+			if (((c + 0) % 16) == 0) rgb |= 0x01;
+			if (((c + 1) % 16) == 0) rgb |= 0x02;
+			if (((c + 2) % 16) == 0) rgb |= 0x04;
+			if (((c + 3) % 16) == 0) rgb |= 0x07;
+		}
 
-		out = orgA | (rgb << BIT_RGB) | (1 << BIT_OE);
+		c = ani + i - (row + 16);
+		b = ani + i + (row + 16);
+		if (b & (0x40 >> (CBITS-bit)))
+		{
+			if (((c + 0) % 16) == 0) rgb |= 0x08;
+			if (((c + 1) % 16) == 0) rgb |= 0x10;
+			if (((c + 2) % 16) == 0) rgb |= 0x20;
+			if (((c + 3) % 16) == 0) rgb |= 0x38;
+		}
+
+		out = orgA | (rgb << BIT_RGB);
 		DAT ('A') = out;
 		DAT ('A') = out | (1U << BIT_CLK);
 	}
 
-	DAT ('A') = out  | (1U < BIT_CLK);
-	DAT ('A') = out  | (1U < BIT_CLK) | (1 << BIT_STO);
-	DAT ('A') = orgA | (1U < BIT_CLK) | (1 << BIT_STO);
+	DAT ('A') = orgA | (1U << BIT_OE);
+	DAT ('G') = orgG | (row << BIT_ABCD);
 
-	row ++;
-	row &= 0xf;
+	DAT ('A') = orgA | (1U << BIT_OE) | (1 << BIT_STO);
+	DAT ('A') = orgA;
 
 	return 0;
 }
 
 int got_sig;
+
+#define ARRAY_SIZE(arr)		(sizeof(arr)/sizeof(arr[0]))
+int loop_scan (void)
+{
+	static const int on_tab[CBITS] =
+	{
+#if 0
+		100,
+		200,
+		400,
+		800,
+#else
+		 80,
+		160,
+		320,
+		640,
+#endif
+	};
+
+	int frame_count;
+	int next, prev;
+	int row, bit;
+
+	row = 0;
+	bit = 0;
+	frame_count = 0;
+	next = get_time ();
+	while(!got_sig)
+	{
+		int now;
+		int sleep;
+		int last_process;
+
+		/* scan a row */
+		prev = next;
+		set_line (row, bit, frame_count);
+
+		/* calculate next time, wait until next scan time */
+		next += on_tab[bit];
+		last_process = -1;
+		while (1)
+		{
+			now = get_time ();
+			if (last_process < 0)
+				last_process = now - prev;
+
+			sleep = next - now;
+			if (sleep > 0)
+			{
+				//printf ("sleep %5dus\n", sleep);
+				//usleep (sleep);
+			}
+			else
+			{
+				//printf ("sleep %3dus, last_process %3dus\n", sleep, last_process);
+				break;
+			}
+		}
+
+		bit ++;
+		if (bit >= CBITS)
+		{
+			bit = 0;
+			row ++;
+			if (row >= 16)
+			{
+				row = 0;
+				frame_count ++;
+			}
+		}
+	}
+}
+
 void sighandle (int num)
 {
 	printf ("got signal %d\n", num);
@@ -196,7 +290,7 @@ int main (int argc, char **argv)
 
 	info ("gpio base %p\n", reg_base);
 
-	dump ();
+	//dump ();
 
 	WR_CFG ('A', BIT_STO, 1);
 	WR_CFG ('A', BIT_OE, 1);
@@ -208,7 +302,7 @@ int main (int argc, char **argv)
 	for (i=BIT_ABCD; i<BIT_ABCD+4; i++)
 		WR_CFG ('G', i, 1);
 
-	dump ();
+	//dump ();
 
 	orgA = DAT ('A');
 	orgA &= 0xfffc07fcU;
@@ -222,22 +316,9 @@ int main (int argc, char **argv)
 	DAT ('A') = orgA;
 	DAT ('G') = orgG;
 
-	while(!got_sig)
-	{
-#if 1
-		scan_row ();
-		usleep (1*1000);
-#else
-		DAT ('A') = orgA;
-		printf ("clk off\n");
-		sleep (2);
+	loop_scan ();
 
-		DAT ('A') = orgA | (1U << BIT_CLK);
-		printf ("clk on\n");
-		sleep (2);
-#endif
-	}
-
+	/* turn off all leds */
 	DAT ('A') = orgA | (1U << BIT_OE);
 	DAT ('G') = orgG;
 	printf ("done.\n");

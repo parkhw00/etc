@@ -21,6 +21,7 @@ void *reg_base;
 
 #define CFG(A, b)	(((A)-'A')*0x24 + ((b)/8)*4)
 #define DAT(A)		(*(volatile unsigned int*)(reg_base + ((A)-'A')*0x24 + 0x10))
+#define PUL(A,b)	(((A)-'A')*0x24 + 0x1c + (((b)/16)*4))
 
 #define fatal(fmt,args...)      _fatal(__func__, __LINE__, fmt, ##args)
 
@@ -84,28 +85,101 @@ unsigned int WR_CFG (unsigned int A, unsigned int b, unsigned int val)
 	return 0;
 }
 
+unsigned int RD_PUL (unsigned int A, unsigned int b)
+{
+	unsigned int val;
+	
+	val = *(volatile unsigned int *)(reg_base + PUL(A, b));
+
+	return (val >> (b & 0xf) * 2) & 0x3;
+}
+
+unsigned int WR_PUL (unsigned int A, unsigned int b, unsigned int val)
+{
+	unsigned int tmp;
+	
+	tmp = *(volatile unsigned int *)(reg_base + PUL(A, b));
+
+	tmp &= ~(0x3U << (b&0xf)*2);
+	tmp |=  (val  << (b&0xf)*2);
+
+	*(volatile unsigned int *)(reg_base + PUL(A, b)) = tmp;
+
+	return 0;
+}
+
+unsigned int orgA, orgG;
+
+// portA
+#define BIT_STO		0
+#define BIT_OE		1
+#define BIT_RGB		11
+#define BIT_CLK		17
+
+// portG
+#define BIT_ABCD	6
+
 int dump (void)
 {
 	int A;
 	int i;
 	int b;
 
+#define print_conf(A,b)		printf("%c%02d : CFG %d, PUL %d\n", A, b, RD_CFG(A, b), RD_PUL(A, b))
 	A = 'A';
-	for (b=0; b<=1; b++)
-		printf ("%c%02d : CFG %d\n", A, b, RD_CFG (A, b));
-	for (b=11; b<=17; b++)
-		printf ("%c%02d : CFG %d\n", A, b, RD_CFG (A, b));
+	print_conf (A, BIT_STO);
+	print_conf (A, BIT_OE);
+	for (b=BIT_RGB; b<BIT_RGB+6; b++)
+		print_conf (A, b);
+	print_conf (A, BIT_CLK);
 
 	A = 'G';
-	for (b=6; b<=9; b++)
-		printf ("%c%02d : CFG %d\n", A, b, RD_CFG (A, b));
+	for (b=BIT_ABCD; b<BIT_ABCD+4; b++)
+		print_conf (A, b);
 
 	printf ("DAT %c : 0x%08x\n", 'A', DAT('A'));
 	printf ("DAT %c : 0x%08x\n", 'G', DAT('G'));
 }
 
-int got_sig;
+int scan_row (void)
+{
+	static int row;
 
+	int i;
+	unsigned int out;
+
+	DAT ('A') = orgA | (1 << BIT_OE);
+
+	DAT ('G') = orgG | (row << BIT_ABCD);
+	//debug ("row %2d, G:0x%08x\n", row, orgG | (row << BIT_ABCD));
+
+	for (i=0; i<32; i++)
+	{
+		unsigned int rgb;
+
+		rgb = 0;
+
+		rgb |= (0x01 | 0x08);
+		//if (((i + row + 0) % 8) == 0) rgb |= (0x01 | 0x08);
+		if (((i + row + 1) % 8) == 0) rgb |= (0x02 | 0x10);
+		if (((i + row + 2) % 8) == 0) rgb |= (0x04 | 0x20);
+
+		out = orgA | (rgb << BIT_RGB) | (1 << BIT_OE);
+		DAT ('A') = out;
+		DAT ('A') = out | (1U < BIT_CLK);
+	}
+
+	DAT ('A') = out  | (1U < BIT_CLK);
+	DAT ('A') = out  | (1U < BIT_CLK) | (1 << BIT_STO);
+	DAT ('A') = orgA | (1U < BIT_CLK) | (1 << BIT_STO);
+
+	row ++;
+	row &= 0xf;
+
+	return 0;
+}
+
+int got_sig;
 void sighandle (int num)
 {
 	printf ("got signal %d\n", num);
@@ -114,7 +188,6 @@ void sighandle (int num)
 
 int main (int argc, char **argv)
 {
-	unsigned int tmpA, tmpG;
 	int i;
 
 	signal (SIGINT, sighandle);
@@ -125,49 +198,38 @@ int main (int argc, char **argv)
 
 	dump ();
 
-	WR_CFG ('A', 0, 1);
-	WR_CFG ('A', 1, 1);
+	WR_CFG ('A', BIT_STO, 1);
+	WR_CFG ('A', BIT_OE, 1);
 
-	WR_CFG ('A', 11, 1);
-	WR_CFG ('A', 12, 1);
-	WR_CFG ('A', 13, 1);
-	WR_CFG ('A', 14, 1);
-	WR_CFG ('A', 15, 1);
-	WR_CFG ('A', 16, 1);
-	WR_CFG ('A', 17, 1);
+	for (i=BIT_RGB; i<BIT_RGB+6; i++)
+		WR_CFG ('A', i, 1);
+	WR_CFG ('A', BIT_CLK, 1);
 
-	WR_CFG ('G', 6, 1);
-	WR_CFG ('G', 7, 1);
-	WR_CFG ('G', 8, 1);
-	WR_CFG ('G', 9, 1);
+	for (i=BIT_ABCD; i<BIT_ABCD+4; i++)
+		WR_CFG ('G', i, 1);
 
 	dump ();
 
-	tmpA = DAT ('A');
-	tmpA &= 0xfffc07ffU;
-	printf ("tmpA %08x\n", tmpA);
+	orgA = DAT ('A');
+	orgA &= 0xfffc07fcU;
+	orgA |= 0x9U<<BIT_RGB;
+	printf ("orgA %08x\n", orgA);
 
-	tmpG = DAT ('G');
-	tmpG &= 0xfffffc3fU;
-	printf ("tmpG %08x\n", tmpG);
+	orgG = DAT ('G');
+	orgG &= 0xfffffc3fU;
+	printf ("orgG %08x\n", orgG);
+
+	DAT ('A') = orgA;
+	DAT ('G') = orgG;
 
 	while(!got_sig)
 	{
-		unsigned int d;
-
-		d = tmpA | (i << 11);
-		DAT ('A') = d;
-
-		d = tmpG | (i << 6);
-		DAT ('G') = d;
-
-		usleep (10000);
-
-		i++;
+		scan_row ();
+		usleep (10*1000);
 	}
 
-	DAT ('A') = tmpA;
-	DAT ('G') = tmpG;
+	DAT ('A') = orgA;
+	DAT ('G') = orgG;
 	printf ("done.\n");
 
 	return 0;

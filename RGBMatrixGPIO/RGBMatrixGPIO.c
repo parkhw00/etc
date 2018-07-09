@@ -159,14 +159,14 @@ int scan_row (void)
 
 		rgb = 0;
 
-		rgb |= (0x01 | 0x08);
-		//if (((i + row + 0) % 8) == 0) rgb |= (0x01 | 0x08);
+		//rgb |= (0x01 | 0x08);
+		if (((i + row + 0) % 8) == 0) rgb |= (0x01 | 0x08);
 		if (((i + row + 1) % 8) == 0) rgb |= (0x02 | 0x10);
 		if (((i + row + 2) % 8) == 0) rgb |= (0x04 | 0x20);
 
 		out = orgA | (rgb << BIT_RGB) | (1 << BIT_OE);
 		DAT ('A') = out;
-		DAT ('A') = out | (1U < BIT_CLK);
+		DAT ('A') = out | (1U << BIT_CLK);
 	}
 
 	DAT ('A') = out  | (1U < BIT_CLK);
@@ -212,7 +212,7 @@ int main (int argc, char **argv)
 
 	orgA = DAT ('A');
 	orgA &= 0xfffc07fcU;
-	orgA |= 0x9U<<BIT_RGB;
+	//orgA |= 0x9U<<BIT_RGB;
 	printf ("orgA %08x\n", orgA);
 
 	orgG = DAT ('G');
@@ -224,11 +224,21 @@ int main (int argc, char **argv)
 
 	while(!got_sig)
 	{
+#if 1
 		scan_row ();
-		usleep (10*1000);
+		usleep (1*1000);
+#else
+		DAT ('A') = orgA;
+		printf ("clk off\n");
+		sleep (2);
+
+		DAT ('A') = orgA | (1U << BIT_CLK);
+		printf ("clk on\n");
+		sleep (2);
+#endif
 	}
 
-	DAT ('A') = orgA;
+	DAT ('A') = orgA | (1U << BIT_OE);
 	DAT ('G') = orgG;
 	printf ("done.\n");
 

@@ -1,0 +1,13 @@
+#!/bin/sh
+
+cmd=$1
+shift
+
+remote=$1
+_target=${remote//\//.}
+target=${_target//:/.}
+
+status=$(cat $target.status)
+
+flock $target.short_lock ./do_$cmd "$*"
+

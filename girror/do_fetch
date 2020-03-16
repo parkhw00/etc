@@ -9,11 +9,6 @@ echo remote : $remote
 echo target : $target
 echo status : $status
 
-if test "x$status" = "xok"; then
-	echo already done
-	exit 0;
-fi
-
 if test -f $target.work_pid; then
 	echo pid $(cat $target.work_pid) already working
 	exit 1;
@@ -30,19 +25,17 @@ echo $$ > $target.work_pid
 
 		cmd="$*"
 		echo cmd: $cmd
-		$cmd 2>&1 >/dev/null | sed -u 's//\n/g' | while IFS= read line; do
+		( cd $target && $cmd 2>&1 >/dev/null; ) | sed -u 's//\n/g' | while IFS= read line; do
 			echo $line > $target.status
 		done
 	}
 
-	echo clean > $target.status
-	rm -Rf $target
-	echo clone > $target.status
-	if run_git $target git clone --progress --mirror $remote $target; then
+	echo fetch > $target.status
+	if run_git $target git fetch --progress origin; then
 		echo ok > $target.status
 		echo $remote > $target.origin
 	else
-		echo clone failed > $target.status
+		echo fetch failed > $target.status
 	fi
 
 	rm $target.work_pid

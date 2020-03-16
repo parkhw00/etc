@@ -1,0 +1,29 @@
+#!/bin/sh
+
+remote=$1
+_target=${remote//\//.}
+target=${_target//:/.}
+status=$(cat $target.status)
+
+echo remote : $remote
+echo target : $target
+echo status : $status
+
+if test -f $target.work_pid; then
+	echo pid $(cat $target.work_pid) already working
+	exit 1;
+fi
+
+echo $$ > $target.work_pid
+
+(
+	flock 9 || exit 1;
+
+	echo fetch > $target.status
+	rm -Rf $target
+	rm $target.status
+	rm $target.origin
+	rm $target.short_lock
+
+	rm $target.work_pid
+) 9>./$target.long_lock &

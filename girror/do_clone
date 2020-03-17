@@ -20,6 +20,7 @@ if test -f $target.work_pid; then
 fi
 
 echo $$ > $target.work_pid
+echo $remote > $target.origin
 
 (
 	flock 9 || exit 1;
@@ -40,7 +41,6 @@ echo $$ > $target.work_pid
 	echo clone > $target.status
 	if run_git $target git clone --progress --mirror $remote $target; then
 		echo ok > $target.status
-		echo $remote > $target.origin
 	else
 		echo clone failed > $target.status
 	fi

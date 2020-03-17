@@ -7,5 +7,7 @@ remote=$1
 _target=${remote//\//.}
 target=${_target//:/.}
 
-flock $target.short_lock ./do_$cmd "$*"
+dir=$(dirname $0)
+
+flock $target.short_lock $dir/do_$cmd "$*"
 

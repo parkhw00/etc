@@ -70,39 +70,16 @@ function l($disp, $addr, $args=array())
 
 if (file_exists ('config.php'))
 {
+	// config.php will provide...
+	//
+	// $config_mirror_dir
+	// $config_gitaddr_base
+	// $config_debug
+
 	include ('config.php');
 }
 else
 	$config_mirror_dir = '.';
-
-$dir = opendir ($config_mirror_dir);
-if ($dir)
-{
-	$output .= '<table>';
-	$output .= '<tr>';
-	$output .= '<th>url';
-	$output .= '<th>status';
-	while (true)
-	{
-		$file = readdir ($dir);
-		if ($file === false)
-			break;
-		debug ("filename: $file");
-		if (substr($file, -7) == '.status')
-		{
-			$target = substr ($file, 0, -7);
-			$origin = file_get_contents ("$config_mirror_dir/$target.origin");
-			$status = file_get_contents ("$config_mirror_dir/$target.status");
-			debug ("target: $target");
-
-			$output .= '<tr>';
-			$output .= "<td><a href=\"$origin\">$origin</a>";
-			$output .= "<td>$status";
-			#$output .= "<td><a href=\"".l('";
-		}
-	}
-	$output .= '</table>';
-}
 
 function get($name, $default=False)
 {
@@ -112,8 +89,19 @@ function get($name, $default=False)
 		return $default;
 }
 
+function get_line($name)
+{
+	$fd = fopen ($name, "r");
+	$line = false;
+	if ($fd)
+		$line = fgets ($fd);
+	if (!$line)
+		$line = "ng";
+	return rtrim ($line);
+}
+
 $do = get('do', 'nothing');
-$url_default = 'git://example.com/repo.git';
+$url_default = '';
 $url = get ('url', $url_default);
 
 debug ("do : $do");
@@ -131,6 +119,44 @@ if ($do == "clone")
 			debug ("out: $row");
 	}
 }
+
+$gitconfig = "";
+
+$dirstatus = "";
+$dir = scandir ($config_mirror_dir);
+if ($dir)
+{
+	$dirstatus .= '<table>';
+	$dirstatus .= '<tr>';
+	$dirstatus .= '<th>url';
+	$dirstatus .= '<th>status';
+	foreach ($dir as $key => $file)
+	{
+		debug ("filename: $file");
+		if (substr($file, -7) == '.status')
+		{
+			$target = substr ($file, 0, -7);
+			$origin = get_line ("$config_mirror_dir/$target.origin");
+			$status = get_line ("$config_mirror_dir/$target.status");
+			debug ("target: $target");
+
+			$dirstatus .= '<tr>';
+			$dirstatus .= "<td><a href=\"$origin\">$origin</a>";
+			$dirstatus .= "<td>$status";
+			#$dirstatus .= "<td><a href=\"".l('";
+
+			$gitconfig .= "[url \"$config_gitaddr_base/$target\"]\n";
+			$gitconfig .= "\tinsteadOf = $origin\n";
+		}
+	}
+	$dirstatus .= '</table>';
+}
+
+$output .= '<pre>';
+$output .= $gitconfig;
+$output .= '</pre>';
+
+$output .= $dirstatus;
 
 $output .= '<form action="." method="post">';
 $output .= '<label for="url">add mirror:</label>';
@@ -156,7 +182,7 @@ if (isset ($output) || isset ($debug_message) || isset ($error_message))
 		echo '<div id="error">', $error_message, '</div>';
 	}
 
-	if ($debug_message != '')
+	if ((isset ($config_debug) && $config_debug) && $debug_message != '')
 	{
 		echo '<div id="debug">', $debug_message, '</div>';
 	}

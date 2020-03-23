@@ -20,8 +20,6 @@ class PlayCheck(object):
         self.player.set_property("video-sink", self.sink)
 
         bus = self.player.get_bus()
-        bus.add_signal_watch()
-        bus.enable_sync_message_emission()
         bus.connect("message", self.on_message)
 
         print('start..', uri)
@@ -72,7 +70,6 @@ def main(args):
             default='rtsp://wowzaec2demo.streamlock.net/vod/mp4:BigBuckBunny_115k.mov',
             type=str, help='media uri to check play')
     arg = parser.parse_args()
-    print (arg)
 
     Gst.init(None)
 
@@ -87,11 +84,3 @@ def main(args):
 if __name__ == '__main__':
     sys.exit(main(sys.argv))
 
-
-# GDK_BACKEND=x11 ./test.py
-
-#win = Gtk.Window()
-#win.connect("destroy", Gtk.main_quit)
-#win.add (Gtk.Button (label="Test Button"))
-#win.show_all()
-#Gtk.main()

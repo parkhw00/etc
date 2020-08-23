@@ -1,8 +1,0 @@
-
-dnf install \
-	pulseaudio-libs-devel \
-	alsa-lib-devel
-
-https://freedesktop.org/software/pulseaudio/doxygen/index.html
-
-test/pcm.c at https://git.alsa-project.org/?p=alsa-lib.git;a=summary

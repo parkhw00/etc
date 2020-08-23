@@ -15,5 +15,5 @@ LDFLAGS_pacat-simple = $(LDFLAGS_pa)
 all: pa_siggen pacat-simple pcm
 
 %:%.c
-	$(CC) $(LDFLAGS) $(LDFLAGS_$*) $(CFLAGS) $(CFLAGS_$*) -o $@ $<
+	$(CC) $(CFLAGS) $(CFLAGS_$*) -o $@ $< $(LDFLAGS) $(LDFLAGS_$*)
 

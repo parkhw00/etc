@@ -1,5 +1,7 @@
 
-dnf install pulseaudio-libs-devel
+dnf install \
+	pulseaudio-libs-devel \
+	alsa-lib-devel
 
 https://freedesktop.org/software/pulseaudio/doxygen/index.html
 

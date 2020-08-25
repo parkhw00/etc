@@ -21,21 +21,14 @@ int main (int argc, char **argv)
 		name = argv[1];
 
 	printf ("name %s\n", name);
-	fd = shm_open (name, O_RDWR | O_CREAT | O_EXCL, 0660);
+	fd = shm_open (name, O_RDWR, 0660);
 	if (fd < 0)
 	{
 		printf ("shm_open() failed. %d(%s)\n", errno, strerror (errno));
 		exit (1);
 	}
 
-	ret = ftruncate (fd, size);
-	if (ret < 0)
-	{
-		printf ("ftruncate() failed. %d(%s)\n", errno, strerror (errno));
-		exit (1);
-	}
-
-	mem = mmap (NULL, size, PROT_WRITE, MAP_SHARED, fd, 0);
+	mem = mmap (NULL, size, PROT_READ, MAP_SHARED, fd, 0);
 	if (mem == MAP_FAILED)
 	{
 		printf ("mmap() failed. %d(%s)\n", errno, strerror (errno));
@@ -44,10 +37,9 @@ int main (int argc, char **argv)
 
 	close (fd);
 
-	sprintf ((char*)mem, "Hello, Shared memory, \"%s\".", name);
+	printf ("Message from Shared Memory. \"\"%s\"\"\n", (char*)mem);
 
 	munmap (mem, size);
-	//shm_unlink (name);
 
 	return 0;
 }

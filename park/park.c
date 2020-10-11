@@ -8,12 +8,12 @@
 #include <termios.h>
 #include <unistd.h>
 
-int write_data (int fd, unsigned int addr, unsigned int order)
+int write_data (int fd, unsigned int sync, unsigned int addr, unsigned int order)
 {
 	unsigned char buf[4];
 	int ret;
 
-	buf[0] = 0xa3;
+	buf[0] = sync;
 	buf[1] = addr;
 	buf[2] = order;
 	buf[3] = buf[0] ^ buf[1] ^ buf[2];
@@ -127,6 +127,7 @@ int main(int argc, char **argv)
 	struct termios termios = { };
 	int fd;
 	char *name = "/dev/ttyUSB0";
+	unsigned int sync = 0xa3;
 	unsigned int addr = 0x01;
 	unsigned int order = 0xa2;
 
@@ -134,21 +135,28 @@ int main(int argc, char **argv)
 	{
 		int opt;
 
-		opt = getopt (argc, argv, "d:a:o:");
+		opt = getopt (argc, argv, "s:d:a:o:");
 		if (opt < 0)
 			break;
 		switch (opt)
 		{
 			default:
 				printf ("unknown option.\n");
-				printf (" park [<option> ...]\n"
-					"\n"
-					" options:\n"
-					" -d <tty name>\n"
-					" -a <device address>\n"
-					" -o <order>\n"
+				printf (
+" park [<option> ...]\n"
+"\n"
+" options:\n"
+" -d <tty name>\n"
+" -s <sync byte>    0xa3 for default commands,\n"
+"                   0xb1 to set installation height\n"
+" -a <device address>\n"
+" -o <order>\n"
 					);
 				exit (1);
+
+			case 's':
+				sync = strtoul (optarg, NULL, 0);
+				break;
 
 			case 'd':
 				name = optarg;
@@ -176,7 +184,7 @@ int main(int argc, char **argv)
 	cfsetspeed (&termios, B4800);
 	tcsetattr(fd, TCSAFLUSH, &termios);
 
-	write_data (fd, addr, order);
+	write_data (fd, sync, addr, order);
 	read_data (fd, order);
 
 	return 0;

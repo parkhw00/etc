@@ -4,4 +4,5 @@
     sed -e 's/DVBC\/ANNEX_B/ATSC/' -e 's/QAM\/256/VSB\/8/' /usr/share/dvbv5/atsc/us-Cable-Standard-center-frequencies-QAM256 > ko-Cable-8VSB
     dvbv5-scan ko-Cable-8VSB
     ...
+    ./dvbv5_to_vlc.awk dvb_channel.conf > dvb_channel.xspf
 

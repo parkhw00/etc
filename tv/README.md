@@ -11,4 +11,6 @@
     ...
     ./dvbv5_to_vlc.awk dvb_channel.conf > dvb_channel.xspf
 
-채널 목록은 dvb_channel.conf 에 저장되는데, vlc 가 그중 DTV 를 보기 괜찮은듯..
+채널 목록은 dvb_channel.conf 파일에 저장되는데, vlc 가 그중 DTV 를 보기 괜찮은듯.. [dvbv5_to_vlc.awk](dvbv5_to_vlc.awk) 스크립트로 dvbv5 포멧의 재생 목록을 vlc 의 재생 목록 파일로 만들 수 있음.
+
+혹은 [tv.py](tv.py) 

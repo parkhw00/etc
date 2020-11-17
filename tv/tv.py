@@ -86,7 +86,7 @@ class GTK_Main(object):
             self.chinfo = ch.next()
         print('channel {0} {1}'.format(self.chinfo['VCHANNEL'], self.chinfo['name']))
 
-        self.src.set_property('adapter', 1)
+        self.src.set_property('adapter', 0)
         self.src.set_property('delsys', dict([
             ('ATSC', 'atsc'),
             ])[self.chinfo['DELIVERY_SYSTEM']])

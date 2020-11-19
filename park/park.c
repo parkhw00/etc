@@ -7,6 +7,8 @@
 #include <stdlib.h>
 #include <termios.h>
 #include <unistd.h>
+#include <errno.h>
+#include <string.h>
 
 int write_data (int fd, unsigned int sync, unsigned int addr, unsigned int order)
 {
@@ -34,6 +36,47 @@ unsigned int get_read_size (unsigned int order)
 	{
 		default: return 2;
 		case 0xa6: return 16;
+	}
+}
+
+int read_all (int fd)
+{
+	int ret;
+	struct pollfd fds = { };
+	unsigned char buf[16];
+
+	fds.fd = fd;
+	fds.events = POLLIN;
+
+	while (1)
+	{
+		fds.revents = 0;
+
+		ret = poll (&fds, 1, 0);
+		if (ret < 0)
+		{
+			printf ("poll failed. %d\n", ret);
+			exit (1);
+		}
+
+		if (ret == 0)
+		{
+			return 0;
+		}
+
+		if (!(fds.revents & POLLIN))
+		{
+			printf ("no POLLIN. 0x%x\n", fds.revents);
+			exit (1);
+		}
+
+		ret = read (fd, buf, sizeof (buf));
+		if (ret <= 0)
+		{
+			printf ("read failed. %d. %s\n", ret, strerror (errno));
+			exit (1);
+		}
+		printf ("got %d bytes\n", ret);
 	}
 }
 
@@ -184,6 +227,7 @@ int main(int argc, char **argv)
 	cfsetspeed (&termios, B4800);
 	tcsetattr(fd, TCSAFLUSH, &termios);
 
+	read_all (fd);
 	write_data (fd, sync, addr, order);
 	read_data (fd, order);
 

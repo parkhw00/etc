@@ -131,10 +131,39 @@ int read_data (int fd, unsigned int order)
 	printf ("\n");
 	if (order == 0xa6)
 	{
+		const char *led_vacant;
+		const char *led_occupied;
+
+		switch (buf[2]&0x7)
+		{
+			default:
+			case 0: led_vacant = "red:occupied, green:vacant";      break;
+			case 1: led_vacant = "red:off,      green:off";         break;
+			case 2: led_vacant = "red:off,      green:on";          break;
+			case 3: led_vacant = "red:on,       green:off";         break;
+			case 4: led_vacant = "red:on,       green:on";          break;
+			case 5: led_vacant = "red:off,      green:blinking";    break;
+			case 6: led_vacant = "red:blinking, green:off";         break;
+			case 7: led_vacant = "red:blinking, green:blinking";    break;
+		}
+
+		switch (buf[3]&0x7)
+		{
+			default:
+			case 0: led_occupied = "red:occupied, green:vacant";      break;
+			case 1: led_occupied = "red:off,      green:off";         break;
+			case 2: led_occupied = "red:off,      green:on";          break;
+			case 3: led_occupied = "red:on,       green:off";         break;
+			case 4: led_occupied = "red:on,       green:on";          break;
+			case 5: led_occupied = "red:off,      green:blinking";    break;
+			case 6: led_occupied = "red:blinking, green:off";         break;
+			case 7: led_occupied = "red:blinking, green:blinking";    break;
+		}
+
 		printf ("address                    0x%02x\n", buf[0]);
 		printf ("detecting interval time    0x%02x\n", buf[1]);
-		printf ("control lamp when vacant   0x%02x\n", buf[2]);
-		printf ("control lamp when occupied 0x%02x\n", buf[3]);
+		printf ("control lamp when vacant   0x%02x(%s)\n", buf[2], led_vacant);
+		printf ("control lamp when occupied 0x%02x(%s)\n", buf[3], led_occupied);
 		printf ("DIP switch                 0x%02x\n", buf[4]);
 #define two(a,b)	(((a)<<8)|(b))
 		printf ("distance 0                 0x%02x%02x(%3dcm)\n", buf[ 5], buf[ 6], two (buf[ 5], buf[ 6]));
@@ -142,7 +171,7 @@ int read_data (int fd, unsigned int order)
 		printf ("distance 2                 0x%02x%02x(%3dcm)\n", buf[ 9], buf[10], two (buf[ 9], buf[10]));
 		printf ("distance 3                 0x%02x%02x(%3dcm)\n", buf[11], buf[12], two (buf[11], buf[12]));
 		printf ("installation height        0x%02x%02x(%3dcm)\n", buf[13], buf[14], two (buf[13], buf[14]));
-		printf ("parking status             0x%02x\n", buf[15]);
+		printf ("parking status             0x%02x(%s)\n", buf[15], (buf[15]&0x01)?"occupied":"vacant");
 	}
 	if (order == 0xa5)
 	{

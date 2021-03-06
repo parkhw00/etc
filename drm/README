@@ -1,0 +1,5 @@
+
+require libdrm-devel pagkage
+
+modetest.c from
+https://chromium.googlesource.com/chromiumos/third_party/drm/+/2f1e2101b4dc0a6dc1c1d1c59c5cc5fbc54b90cf/tests/modetest/modetest.c

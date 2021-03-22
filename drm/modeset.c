@@ -1,4 +1,5 @@
 
+#include <inttypes.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -201,7 +202,7 @@ int main (int argc, char **argv)
 			drmModePropertyPtr prop;
 
 			prop = drmModeGetProperty (fd, conn->props[j]);
-			debug ("connector[%d].props[%d].name %s = %d\n", i, j, prop->name, conn->prop_values[j]);
+			debug ("connector[%d].props[%d].name %s = %"PRIu64"\n", i, j, prop->name, conn->prop_values[j]);
 			drmModeFreeProperty (prop);
 		}
 		for (j=0; j<conn->count_encoders; j++)

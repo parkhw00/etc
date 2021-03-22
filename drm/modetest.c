@@ -39,6 +39,7 @@
  */
 //#include "config.h"
 
+#include <inttypes.h>
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -416,7 +417,7 @@ connector_find_mode(struct connector *c)
 
 static struct kms_bo *
 allocate_buffer(struct kms_driver *kms,
-		int width, int height, int *stride)
+		int width, int height, unsigned int *stride)
 {
 	struct kms_bo *bo;
 	unsigned bo_attribs[] = {
@@ -500,7 +501,8 @@ create_test_buffer(struct kms_driver *kms,
 		   struct kms_bo **bo_out)
 {
 	struct kms_bo *bo;
-	int ret, i, j, stride;
+	int ret, i, j;
+	unsigned int stride;
 	void *virtual;
 
 	bo = allocate_buffer(kms, width, height, &stride);
@@ -541,7 +543,8 @@ create_grey_buffer(struct kms_driver *kms,
 		   struct kms_bo **bo_out)
 {
 	struct kms_bo *bo;
-	int size, ret, stride;
+	int size, ret;
+	unsigned int stride;
 	void *virtual;
 
 	bo = allocate_buffer(kms, width, height, &stride);

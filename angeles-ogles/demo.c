@@ -27,7 +27,8 @@
 #include <float.h>
 #include <assert.h>
 
-#include "importgl.h"
+#include <GLES/gl.h>
+#include <GLES/egl.h>
 
 #include "app.h"
 #include "shapes.h"

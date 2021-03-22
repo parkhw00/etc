@@ -51,8 +51,10 @@
 #include <X11/Xlib.h>
 #include <X11/Xutil.h>
 #include <X11/keysym.h>
+#include <X11/XKBlib.h>
 
-#include "importgl.h"
+#include <GLES/gl.h>
+#include <GLES/egl.h>
 
 #include "app.h"
 
@@ -114,11 +116,6 @@ static int initGraphics()
     EGLint numConfigs;
     EGLint majorVersion;
     EGLint minorVersion;
-
-    int importGLResult;
-    importGLResult = importGLInit();
-    if (!importGLResult)
-        return 0;
 
     sDisplay = XOpenDisplay(NULL);
 
@@ -189,7 +186,6 @@ static void deinitGraphics()
     eglDestroyContext(sEglDisplay, sEglContext);
     eglDestroySurface(sEglDisplay, sEglSurface);
     eglTerminate(sEglDisplay);
-    importGLDeinit();
 }
 
 
@@ -221,7 +217,7 @@ int main(int argc, char *argv[])
                 {
                     unsigned int keycode, keysym;
                     keycode = ((XKeyEvent *)&ev)->keycode;
-                    keysym = XKeycodeToKeysym(sDisplay, keycode, 0);
+                    keysym = XkbKeycodeToKeysym (sDisplay, keycode, 0, ev.xkey.state & ShiftMask ? 1:0);
                     if (keysym == XK_Return || keysym == XK_Escape)
                         gAppAlive = 0;
                 }

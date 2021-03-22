@@ -31,10 +31,17 @@ extern "C" {
 #endif
 
 
+#if 0
 #define WINDOW_DEFAULT_WIDTH    640
 #define WINDOW_DEFAULT_HEIGHT   480
 
 #define WINDOW_BPP              16
+#else
+#define WINDOW_DEFAULT_WIDTH    1920
+#define WINDOW_DEFAULT_HEIGHT   1080
+
+#define WINDOW_BPP              32
+#endif
 
 
 // The simple framework expects the application code to define these functions.

@@ -82,11 +82,13 @@ int importGLInit()
 #endif // WIN32
 
 #ifdef LINUX
+#if 0
     sGLESSO = dlopen("libGLES_CM.so", RTLD_NOW);
     if (sGLESSO == NULL)
         sGLESSO = dlopen("libGLES_CL.so", RTLD_NOW);
     if (sGLESSO == NULL)
         return 0;   // Cannot find OpenGL ES Common or Common Lite SO.
+#endif
 
 #define IMPORT_FUNC(funcName) do { \
         void *procAddress = (void *)dlsym(sGLESSO, #funcName); \
@@ -147,6 +149,8 @@ void importGLDeinit()
 #endif
 
 #ifdef LINUX
+#if 0
     dlclose(sGLESSO);
+#endif
 #endif
 }

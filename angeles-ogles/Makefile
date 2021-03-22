@@ -1,7 +1,5 @@
 
 OBJS += demo.o
-#OBJS += importgl.o
-OBJS += app-linux.o
 
 PKGS += wayland-egl
 PKGS += x11
@@ -13,6 +11,11 @@ CFLAGS += $(shell pkg-config --cflags $(PKGS))
 LDFLAGS += -lm -ldl
 LDFLAGS += $(shell pkg-config --libs $(PKGS))
 
-demo: $(OBJS)
+all: demo demo-wayland
+
+demo: $(OBJS) app-x11.o
+	$(CC) -o $@ $^ $(LDFLAGS)
+
+demo-wayland: $(OBJS) app-wayland.o
 	$(CC) -o $@ $^ $(LDFLAGS)
 

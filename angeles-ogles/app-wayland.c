@@ -108,7 +108,7 @@ static EGLSurface sEglSurface = EGL_NO_SURFACE;
 
 
 #define CASE_STR( value ) case value: return #value;
-const char* glGetErrorString( GLenum error )
+static const char* glGetErrorString( GLenum error )
 {
     switch( error )
     {
@@ -122,7 +122,7 @@ const char* glGetErrorString( GLenum error )
     default: return "Unknown";
     }
 }
-const char* eglGetErrorString( EGLint error )
+static const char* eglGetErrorString( EGLint error )
 {
     switch( error )
     {
@@ -153,7 +153,7 @@ static void _checkGLErrors(const char *func, int line)
     if (error != GL_NO_ERROR)
     {
         fprintf(stderr, "GL Error: 0x%04x(%s) at %s.%d\n", (int)error, glGetErrorString(error), func, line);
-        exit (1);
+        //exit (1);
     }
 }
 
@@ -205,9 +205,11 @@ EGLBoolean CreateEGLContext ()
        EGL_RED_SIZE,        8,
        EGL_GREEN_SIZE,      8,
        EGL_BLUE_SIZE,       8,
+       EGL_DEPTH_SIZE,      16,
+       EGL_ALPHA_SIZE,      EGL_DONT_CARE,
+       EGL_STENCIL_SIZE,    EGL_DONT_CARE,
        EGL_NONE
    };
-   EGLint contextAttribs[] = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE, EGL_NONE };
    EGLDisplay display = eglGetDisplay( ESContext.native_display );
    if ( display == EGL_NO_DISPLAY )
    {
@@ -245,7 +247,7 @@ EGLBoolean CreateEGLContext ()
    }
 
    // Create a GL context
-   context = eglCreateContext(display, config, EGL_NO_CONTEXT, contextAttribs );
+   context = eglCreateContext(display, config, EGL_NO_CONTEXT, NULL );
    if ( context == EGL_NO_CONTEXT )
    {
       LOG("No context...\n");
@@ -262,19 +264,26 @@ EGLBoolean CreateEGLContext ()
    ESContext.display = display;
    ESContext.surface = surface;
    ESContext.context = context;
+
+   sEglDisplay = display;
+   sEglSurface = surface;
+   sEglContext = context;
+   sEglConfig;
+
    return EGL_TRUE;
 }
 
-void shell_surface_ping
-(void *data, struct wl_shell_surface *shell_surface, uint32_t serial) {
+void shell_surface_ping (void *data, struct wl_shell_surface *shell_surface, uint32_t serial) {
+  LOG("ping..\n");
   wl_shell_surface_pong(shell_surface, serial);
 }
 
-void shell_surface_configure
-(void *data, struct wl_shell_surface *shell_surface, uint32_t edges,
- int32_t width, int32_t height) {
-  struct window *window = data;
+void shell_surface_configure (void *data, struct wl_shell_surface *shell_surface, uint32_t edges,
+                int32_t width, int32_t height) {
+  LOG("configure %dx%d\n", width, height);
   wl_egl_window_resize(ESContext.native_window, width, height, 0, 0);
+  sWindowWidth = width;
+  sWindowHeight = height;
 }
 
 void shell_surface_popup_done(void *data, struct wl_shell_surface *shell_surface) {
@@ -329,7 +338,7 @@ get_server_references() {
   wl_registry_add_listener(wl_registry, &listener, NULL);
 
   // This call the attached listener global_registry_handler
-  wl_display_dispatch(display);
+  //wl_display_dispatch(display);
   wl_display_roundtrip(display);
 
   // If at this point, global_registry_handler didn't set the
@@ -371,6 +380,7 @@ int main(int argc, char *argv[])
     else LOG("Got a compositor surface !\n");
 
     shell_surface = wl_shell_get_shell_surface(shell, surface);
+    wl_shell_surface_add_listener(shell_surface, &shell_surface_listener, NULL);
     wl_shell_surface_set_toplevel(shell_surface);
 
     if (!CreateWindowWithEGLContext(sAppName, sWindowWidth, sWindowHeight))
@@ -380,6 +390,8 @@ int main(int argc, char *argv[])
     }
 
     appInit();
+    checkEGLErrors();
+    checkGLErrors();
 
     while (gAppAlive)
     {

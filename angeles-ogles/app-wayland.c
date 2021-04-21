@@ -102,7 +102,7 @@ static char sAppName[] =
 static int sWindowWidth = WINDOW_DEFAULT_WIDTH;
 static int sWindowHeight = WINDOW_DEFAULT_HEIGHT;
 static EGLDisplay sEglDisplay = EGL_NO_DISPLAY;
-static EGLConfig sEglConfig;
+//static EGLConfig sEglConfig;
 static EGLContext sEglContext = EGL_NO_CONTEXT;
 static EGLSurface sEglSurface = EGL_NO_SURFACE;
 
@@ -268,7 +268,7 @@ EGLBoolean CreateEGLContext ()
    sEglDisplay = display;
    sEglSurface = surface;
    sEglContext = context;
-   sEglConfig;
+   //sEglConfig;
 
    return EGL_TRUE;
 }

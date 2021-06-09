@@ -10,3 +10,5 @@ TARGETS += shmunlink
 
 all: $(TARGETS)
 
+%: %.c
+	$(CC) -o $@ $< $(CFLAGS) $(LDFLAGS)

@@ -22,7 +22,7 @@ int print_shm (int id)
 		exit (1);
 	}
 
-#define pr(n)	printf (#n ": %d\n", buf.n);
+#define pr(n)	printf (#n ": %ld\n", (long)buf.n);
 	pr (shm_perm.__key);
 	pr (shm_perm.uid);
 	pr (shm_perm.gid);

@@ -18,7 +18,7 @@ int main (int argc, char **argv)
 	printf ("id %d(0x%x)\n", id, id);
 
 	mem = shmat (id, NULL, 0);
-	printf ("mem %p: %s\n", mem, mem);
+	printf ("mem %p: %s\n", mem, (char *)mem);
 
 	return 0;
 }

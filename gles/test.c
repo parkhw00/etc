@@ -13,10 +13,12 @@
 
 #include <EGL/egl.h>
 #include <EGL/eglext.h>
+#include <GLES/gl.h>
 
 #define debug(fmt, args...)	fprintf(stderr, "%s.%d: "fmt, __func__, __LINE__, ##args)
 #define fatal(fmt, args...)	do{debug("FATAL - "fmt, ##args); exit(1);}while(0)
 #define check_egl_error()	do{int err = eglGetError(); if(err != EGL_SUCCESS) fatal("egl error. 0x%x\n", err);}while(0)
+#define check_gl_error()	do{int err = glGetError(); if(err != GL_NO_ERROR) fatal("gl error. 0x%x\n", err);}while(0)
 
 int get_dmabuf(int size)
 {
@@ -174,10 +176,6 @@ int test_import(void)
 	int i;
 
 #define load_egl(t,n)	t n = (t)eglGetProcAddress(#n); if(!n) fatal("no "#n"\n");
-	load_egl(PFNEGLCREATEIMAGEKHRPROC, eglCreateImageKHR);
-	load_egl(PFNEGLDESTROYIMAGEPROC, eglDestroyImageKHR);
-	load_egl(PFNEGLQUERYDMABUFFORMATSEXTPROC, eglQueryDmaBufFormatsEXT);
-	load_egl(PFNEGLQUERYDMABUFMODIFIERSEXTPROC, eglQueryDmaBufModifiersEXT);
 
 	EGLDisplay dpy = eglGetDisplay(NULL);
 	check_egl_error();
@@ -187,7 +185,16 @@ int test_import(void)
 	check_egl_error();
 	debug("%d.%d\n", major, minor);
 
+#define debug_egl_query_string(n)	debug("%s: %s\n", #n, eglQueryString(dpy, EGL_##n))
+	debug_egl_query_string(VERSION);
+	debug_egl_query_string(VENDOR);
+	debug_egl_query_string(EXTENSIONS);
+	debug_egl_query_string(CLIENT_APIS);
+#undef debug_egl_query_string
+
 	int num_formats = 0;
+	load_egl(PFNEGLQUERYDMABUFFORMATSEXTPROC, eglQueryDmaBufFormatsEXT);
+	load_egl(PFNEGLQUERYDMABUFMODIFIERSEXTPROC, eglQueryDmaBufModifiersEXT);
 	eglQueryDmaBufFormatsEXT(dpy, 0, NULL, &num_formats);
 	check_egl_error();
 	debug("num dmabuf formats %d\n", num_formats);
@@ -222,7 +229,11 @@ int test_import(void)
 			}
 		}
 
-		debug("%2d. dmabuf format (0x%08x)DRM_FORMAT_%-14s modifiers(%d)%s\n", i,
+		debug("%2d. dmabuf format (%c%c%c%c/0x%08x)DRM_FORMAT_%-14s modifiers(%d)%s\n", i,
+				(dmabuf_formats[i]>> 0)&0xff,
+				(dmabuf_formats[i]>> 8)&0xff,
+				(dmabuf_formats[i]>>16)&0xff,
+				(dmabuf_formats[i]>>24)&0xff,
 				dmabuf_formats[i],
 				fourcc_name(dmabuf_formats[i]),
 				num_modifiers, mods?mods:"");
@@ -230,7 +241,6 @@ int test_import(void)
 			free(mods);
 	}
 
-#if 0
 	EGLConfig config;
 	int num_config = 0;
 	int config_attrs[] =
@@ -250,12 +260,39 @@ int test_import(void)
 	EGLContext ctx;
 	ctx = eglCreateContext(dpy, config, EGL_NO_CONTEXT, NULL);
 	check_egl_error();
-#endif
 
 	int width = 400;
 	int height = 300;
 	int pitch = width * 4;//2;
 	int size = pitch * height;
+	int pbuffer_attrs[] =
+	{
+		EGL_WIDTH, width,
+		EGL_HEIGHT, height,
+		EGL_NONE,
+	};
+	EGLSurface surface;
+	surface = eglCreatePbufferSurface(dpy, config, pbuffer_attrs);
+	check_egl_error();
+
+	eglMakeCurrent(dpy, surface, surface, ctx);
+	check_egl_error();
+
+	glClearColor(1.0, 1.0, 0.0, 1.0);
+	check_gl_error();
+	glClear(GL_COLOR_BUFFER_BIT);
+	check_gl_error();
+	eglSwapBuffers(dpy, surface);
+	check_egl_error();
+
+	unsigned char pixelbuf[pitch];
+	glReadPixels(0, 0, width, 1, GL_RGBA, GL_UNSIGNED_BYTE, pixelbuf);
+	check_gl_error();
+	debug("pixel %02x %02x %02x %02x %02x %02x %02x %02x\n",
+			pixelbuf[0], pixelbuf[1], pixelbuf[2], pixelbuf[3],
+			pixelbuf[4], pixelbuf[5], pixelbuf[6], pixelbuf[7]);
+
+#if 0
 	int fd = get_dmabuf(size);
 	int dmabuf_attrs[] =
 	{
@@ -267,9 +304,22 @@ int test_import(void)
 		EGL_DMA_BUF_PLANE0_PITCH_EXT, pitch,
 		EGL_NONE,
 	};
-	eglCreateImageKHR(dpy, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, NULL, dmabuf_attrs);
+	EGLImageKHR image;
+	load_egl(PFNEGLCREATEIMAGEKHRPROC, eglCreateImageKHR);
+	image = eglCreateImageKHR(dpy, EGL_NO_CONTEXT, EGL_LINUX_DMA_BUF_EXT, NULL, dmabuf_attrs);
 	check_egl_error();
 
+	load_egl(PFNGLGENFRAMEBUFFERSOESPROC, glGenFramebuffersOES);
+	load_egl(PFNGLBINDFRAMEBUFFEROESPROC, glBindFramebufferOES);
+	load_egl(PFNGLRENDERBUFFERSTORAGEOESPROC, glRenderbufferStorageOES);
+	int fbo = 0;
+	glGenFramebuffersOES(1, &fbo);
+	check_gl_error();
+	glBindFramebufferOES(GL_FRAMEBUFFER_OES, fbo);
+	check_gl_error();
+#endif
+
+	//load_egl(PFNEGLDESTROYIMAGEPROC, eglDestroyImageKHR);
 	eglTerminate(dpy);
 
 	return 0;

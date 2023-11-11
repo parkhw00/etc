@@ -25,6 +25,7 @@ class GTK_Main(object):
     vsink=None
 
     chinfo=None
+    use_decqueue=False
 
     def __init__(self):
         window = Gtk.Window(type=Gtk.WindowType.TOPLEVEL)
@@ -151,7 +152,6 @@ class GTK_Main(object):
         pad.link(q.get_static_pad('sink'))
         q.link(d)
 
-        self.stream_demux_pads[av] = pad.name
         self.elements[pad.name] = dict([('q', q), ('d', d)])
 
     def demux_pad_removed(self, element, pad):
@@ -166,7 +166,6 @@ class GTK_Main(object):
             del self.elements[pad.name]['q']
             del self.elements[pad.name]['d']
             del self.elements[pad.name]
-            del self.stream_demux_pads[av]
 
             self.demux_stream_num[av] = self.demux_stream_num[av] - 1
         else:
@@ -178,10 +177,17 @@ class GTK_Main(object):
             return
 
         av = element.name.split('_')[0]
-        dpad = self.stream_demux_pads[av]
+        self.playsink_pads[av] = self.playsink.request_pad_simple(f'{av}_sink')
 
-        self.playsink_pads[av] = self.playsink.get_request_pad(f'{av}_sink')
-        pad.link(self.playsink_pads[av])
+        if self.use_decqueue:
+            dq = Gst.ElementFactory.make('queue', f'{av}_dec_queue')
+
+            pad.link(dq.get_static_pad('sink'))
+            dq.get_static_pad('src').link(self.playsink_pads[av])
+
+            self.elements[f'{av}_dec_queue'] = dq
+        else:
+            pad.link(self.playsink_pads[av])
 
     def dec_pad_removed(self, element, pad):
         print('dec pad removed. {0}.{1}'.format(element.name, pad.name))
@@ -192,7 +198,10 @@ class GTK_Main(object):
         av = element.name.split('_')[0]
 
         self.playsink.release_request_pad(self.playsink_pads[av])
+
         del self.playsink_pads[av]
+        if self.use_decqueue:
+            del self.elements[f'{av}_dec_queue']
 
     def on_key_press(self, widget, event):
         print(f'key press. {event.keyval}')
